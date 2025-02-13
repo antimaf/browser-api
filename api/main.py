@@ -1,31 +1,94 @@
 #Server dependencies
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from quart import Quart, jsonify, request
+from quart_cors import cors
+import os
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Dict, Optional
 
 #Local imports
 from handlers.agenthandler import AgentHandler
+from handlers.taskmanager import task_manager
+from config import setup_logging
 
-app = Flask(__name__)
-CORS(app)
+app = Quart(__name__)
+app = cors(app)
+app = setup_logging(app)
 
-@app.route('/api', methods=['POST'])
-async def api():
-    """
-    API endpoint to execute a browser-use agent.
+# Simple API key verification
+def require_api_key(f):
+    @wraps(f)
+    async def decorated(*args, **kwargs):
+        if app.debug:  # Skip API key check in debug mode
+            return await f(*args, **kwargs)
+        api_key = request.headers.get('X-API-Key')
+        if not api_key or api_key != os.getenv('API_KEY'):
+            return jsonify({"error": "Invalid API key"}), 401
+        return await f(*args, **kwargs)
+    return decorated
 
-    Request body should contain the following fields:
-    - model: str, the model to use
-    - task: str, the task description
-    - api_key: str, the API key for the model
-    - headless: bool, whether to run the browser in headless mode
-    - max_steps: int, the maximum number of steps to take in the agent
+@app.route('/api/status', methods=['GET'])
+async def api_status():
+    """Get API service status"""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0"
+    })
 
-    Returns the result from the agent after processing the task.
-    """
-    data = request.json
-    model, task, api_key, headless, max_steps = data['model'], data['task'], data['api_key'], data['headless'], data['max_steps']
-    agent_handler = AgentHandler(task, api_key, model, headless, max_steps)
-    return await agent_handler.execute()
+@app.route('/api/tasks', methods=['POST'])
+@require_api_key
+async def create_task():
+    """Create and execute a new browser task"""
+    try:
+        data = await request.get_json()
+        print(f"Received task data: {data}")  # Debug log
+        
+        task_id = task_manager.generate_task_id()
+        task_manager.register_task(task_id)
+        
+        agent_handler = AgentHandler(
+            task=data['task'],
+            api_key=data['api_key'],
+            model=data['model'],
+            headless=data.get('headless', True),
+            max_steps=data.get('max_steps', 10)
+        )
+        result = await agent_handler.execute()
+        task_manager.complete_task(task_id, result)
+        return jsonify({"task_id": task_id, "status": "completed", "result": result})
+    except Exception as e:
+        import traceback
+        print(f"Error creating task: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")  # Debug log
+        if 'task_id' in locals():
+            task_manager.fail_task(task_id, str(e))
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/tasks/<task_id>', methods=['GET'])
+@require_api_key
+async def get_task_status(task_id):
+    """Get status of a specific task"""
+    task = task_manager.get_task(task_id)
+    if task:
+        return jsonify(task)
+    return jsonify({"error": "Task not found"}), 404
+
+@app.route('/api/tasks', methods=['GET'])
+@require_api_key
+async def list_tasks():
+    """List all tasks"""
+    tasks = task_manager.list_tasks()
+    return jsonify(tasks)
+
+@app.route('/api/tasks/<task_id>/cancel', methods=['POST'])
+@require_api_key
+async def cancel_task(task_id):
+    """Cancel a running task"""
+    success = task_manager.cancel_task(task_id)
+    if success:
+        return jsonify({"status": "cancelled"})
+    return jsonify({"error": "Task not found or already completed"}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)

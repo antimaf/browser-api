@@ -1,19 +1,45 @@
 #imports
 import os
-from typing import Optional
+from typing import Optional, List, Dict, Any
+from dataclasses import dataclass
+import time
 import asyncio
 from flask import jsonify
-from pydantic import SecretStr
+from pydantic import SecretStr, BaseModel
+import json
+from datetime import datetime
 
-from browser_use import Agent
-from browser_use.controller import Controller
+#browser_use imports
+from browser_use import Agent, Browser, BrowserConfig
 
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_google_genai import ChatGoogleGenerativeAI
+from models.llm import create_llm_config
+from models.browser import AutomationScript, BrowserAction
 
 import logging
 logger = logging.getLogger(__name__)
+
+class BrowserAction(BaseModel):
+    """Model for browser actions that can be executed"""
+    action_type: str  # click, type, scroll, navigate, etc.
+    selector: Optional[str] = None
+    value: Optional[str] = None
+    url: Optional[str] = None
+    coordinates: Optional[Dict[str, int]] = None
+    wait_time: Optional[int] = None
+
+class ScriptStep(BaseModel):
+    """Model for a step in an automation script"""
+    step_id: str
+    description: str
+    actions: List[BrowserAction]
+    validation: Optional[Dict[str, Any]] = None
+
+class AutomationScript(BaseModel):
+    """Model for a complete automation script"""
+    name: str
+    description: str
+    steps: List[ScriptStep]
+    variables: Optional[Dict[str, str]] = None
 
 class AgentHandler:
     '''
@@ -26,58 +52,223 @@ class AgentHandler:
         model (str): The model to use
         headless (bool): Whether to run in headless mode
         max_steps (int): The maximum number of steps to take in the agent
+        script (Optional[AutomationScript]): Predefined automation script
+        variables (Optional[Dict[str, str]]): Variables for script execution
+        screenshot_dir (Optional[str]): Directory to save screenshots
+        record_video (bool): Whether to record video of the session
+        debug_mode (bool): Whether to run in debug mode with more logging
     '''
-    def __init__(self, task: str, api_key: Optional[str], model: str, headless: bool, max_steps: int):
+    def __init__(
+        self, 
+        task: str, 
+        api_key: Optional[str], 
+        model: str, 
+        headless: bool, 
+        max_steps: int,
+        script: Optional[AutomationScript] = None,
+        variables: Optional[Dict[str, str]] = None,
+        screenshot_dir: Optional[str] = None,
+        record_video: bool = False,
+        debug_mode: bool = False
+    ):
         self.task = task
         self.api_key = api_key
         self.model = model
         self.headless = headless
         self.max_steps = max_steps
-    
-    async def execute(self) -> str:
-        """
-        Handles the interaction with the language model based on the specified task and model type.
+        self.script = script
+        self.variables = variables or {}
+        self.screenshot_dir = screenshot_dir
+        self.record_video = record_video
+        self.debug_mode = debug_mode
+        self.execution_log = []
+        self.screenshots = []
+        self.video_path = None
 
-        Returns:
-            str: The result from the agent after processing the task. 
-                 Returns an error message if the model is unsupported or the API key is missing.
+        # Initialize LLM configuration
+        self.llm_config = create_llm_config(model, api_key) if api_key else None
+
+    def _log_action(self, action: str, details: Dict[str, Any]) -> None:
+        """Log an action with timestamp"""
+        self.execution_log.append({
+            "timestamp": datetime.now().isoformat(),
+            "action": action,
+            "details": details
+        })
+        if self.debug_mode:
+            logger.debug(f"Action: {action}, Details: {json.dumps(details)}")
+
+    async def take_screenshot(self, controller: Browser, step_id: str) -> str:
+        """Take a screenshot and save it"""
+        if not self.screenshot_dir:
+            return None
+        
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{step_id}_{timestamp}.png"
+        filepath = os.path.join(self.screenshot_dir, filename)
+        await controller.screenshot(filepath)
+        self.screenshots.append(filepath)
+        return filepath
+
+    async def execute_script(self, controller: Browser) -> Dict[str, Any]:
+        """Execute a predefined automation script"""
+        if not self.script:
+            return {"error": "No script provided"}
+
+        results = []
+        for step in self.script.steps:
+            step_result = {
+                "step_id": step.step_id,
+                "description": step.description,
+                "status": "started",
+                "actions": []
+            }
+
+            try:
+                for action in step.actions:
+                    # Replace variables in action values
+                    if action.value and isinstance(action.value, str):
+                        for var_name, var_value in self.variables.items():
+                            action.value = action.value.replace(f"${var_name}", var_value)
+
+                    action_result = await self._execute_action(controller, action)
+                    step_result["actions"].append(action_result)
+
+                    if self.screenshot_dir:
+                        screenshot = await self.take_screenshot(controller, step.step_id)
+                        if screenshot:
+                            action_result["screenshot"] = screenshot
+
+                # Validate step if validation rules exist
+                if step.validation:
+                    validation_result = await self._validate_step(controller, step.validation)
+                    step_result["validation"] = validation_result
+
+                step_result["status"] = "completed"
+            except Exception as e:
+                step_result["status"] = "failed"
+                step_result["error"] = str(e)
+                logger.error(f"Step {step.step_id} failed: {str(e)}")
+                break
+
+            results.append(step_result)
+
+        return {
+            "script_name": self.script.name,
+            "steps": results,
+            "screenshots": self.screenshots,
+            "video": self.video_path,
+            "execution_log": self.execution_log
+        }
+
+    async def _execute_action(self, controller: Browser, action: BrowserAction) -> Dict[str, Any]:
+        """Execute a single browser action"""
+        result = {
+            "action_type": action.action_type,
+            "status": "started"
+        }
+
+        try:
+            if action.action_type == "click":
+                await controller.click(action.selector)
+            elif action.action_type == "type":
+                await controller.type(action.selector, action.value)
+            elif action.action_type == "navigate":
+                await controller.navigate(action.url)
+            elif action.action_type == "scroll":
+                await controller.scroll(action.coordinates["x"], action.coordinates["y"])
+            elif action.action_type == "wait":
+                await asyncio.sleep(action.wait_time or 1)
+            
+            result["status"] = "completed"
+            self._log_action(action.action_type, {
+                "selector": action.selector,
+                "value": action.value,
+                "url": action.url,
+                "coordinates": action.coordinates
+            })
+        except Exception as e:
+            result["status"] = "failed"
+            result["error"] = str(e)
+            logger.error(f"Action {action.action_type} failed: {str(e)}")
+
+        return result
+
+    async def _validate_step(self, controller: Browser, validation: Dict[str, Any]) -> Dict[str, bool]:
+        """Validate a step using specified rules"""
+        results = {}
+        
+        if "element_exists" in validation:
+            for selector in validation["element_exists"]:
+                results[f"element_exists_{selector}"] = await controller.element_exists(selector)
+                
+        if "url_contains" in validation:
+            current_url = await controller.get_current_url()
+            results["url_contains"] = validation["url_contains"] in current_url
+            
+        if "text_visible" in validation:
+            for text in validation["text_visible"]:
+                results[f"text_visible_{text}"] = await controller.text_visible(text)
+                
+        return results
+
+    async def execute(self) -> Dict[str, Any]:
+        """
+        Execute the agent task or script.
+        Returns a dictionary containing execution results, screenshots, and logs.
         """
         logger.info(f"Executing task: {self.task}, model: {self.model}, headless: {self.headless}, max_steps: {self.max_steps}")
-        SERVER_API_KEYS = {
-            "gpt-4o": os.getenv('OPENAI_API_KEY'),  # OpenAI API key for GPT-4
-            "gpt-3.5-turbo": os.getenv('OPENAI_API_KEY'),  # OpenAI API key for GPT-3.5
-            "Claude 3.5 Sonnet": os.getenv('ANTHROPIC_API_KEY'),  # Anthropic API key for Claude
-            "DeepSeek": os.getenv('DEEPSEEK_API_KEY'),  # DeepSeek API key
-            "Gemini": os.getenv('GEMINI_API_KEY'),  # Gemini API key
-        }
-        
-        # Use provided API key if available, otherwise fall back to server API keys
-        api_key_to_use = self.api_key if self.api_key else SERVER_API_KEYS.get(self.model)
-        if api_key_to_use is None:
-            return jsonify({"error": f"No API key available for model: {self.model}"}), 400
-
-        match self.model:
-            case 'gpt-4o' | 'gpt-3.5-turbo':
-                llm = ChatOpenAI(model=self.model, api_key=SecretStr(api_key_to_use))
-            case 'Claude 3.5 Sonnet':
-                llm = ChatAnthropic(model_name='claude-3-5-sonnet-20240620', api_key=SecretStr(api_key_to_use), timeout=100, stop=None, temperature=0.0)
-            case 'DeepSeek':
-                llm = ChatOpenAI(model='DEEPSEEK-CHAT', api_key=SecretStr(api_key_to_use))
-            case 'Gemini':
-                llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(api_key_to_use))
-            case _:
-                return jsonify({"error": f"Unsupported model: {self.model}"}), 400
-                
-        agent = Agent(
-            task=self.task,
-            llm=llm,
-            max_actions_per_step=4,
-        )
         
         try:
-            history = await agent.run(max_steps=self.max_steps)
-            logger.info('Agent completed successfully')
-            return history
+            # Initialize the browser with proper configuration
+            browser = Browser(config=BrowserConfig(headless=self.headless))
+            context = await browser.new_context()
+
+            if self.record_video:
+                # Start video recording
+                if not os.path.exists(self.screenshot_dir):
+                    os.makedirs(self.screenshot_dir)
+                await context.start_video_recording(self.screenshot_dir)
+
+            # Execute task based on script or AI agent
+            if self.script:
+                result = await self.execute_script(context)
+            else:
+                # Execute using AI agent
+                agent = Agent(
+                    task=self.task,
+                    llm=self._get_llm(),
+                    max_actions_per_step=4
+                )
+                agent_result = await agent.run()
+                result = {
+                    "success": True,
+                    "output": str(agent_result),
+                    "execution_log": [],
+                    "screenshots": [],
+                    "video": None
+                }
+
+            # Add screenshots if directory is specified
+            if self.screenshot_dir:
+                if not os.path.exists(self.screenshot_dir):
+                    os.makedirs(self.screenshot_dir)
+                await context.screenshot(path=os.path.join(self.screenshot_dir, "final.png"))
+
+            return result
+
         except Exception as e:
-            logger.error(f"Error during task execution: {str(e)}")
-            return str(e)
+            logger.error(f"Error executing task: {str(e)}")
+            return {"error": str(e), "execution_log": [], "screenshots": [], "video": None}
+        finally:
+            # Cleanup
+            if self.record_video:
+                await context.stop_video_recording()
+            await context.close()
+            await browser.close()
+
+    def _get_llm(self):
+        """Get the appropriate language model based on configuration"""
+        if not self.llm_config:
+            raise ValueError("No API key provided for the model")
+        return self.llm_config.create_llm()
