@@ -9,6 +9,7 @@ from typing import Dict, Optional
 #Local imports
 from handlers.agenthandler import AgentHandler
 from handlers.taskmanager import task_manager
+from models.browser import AutomationScript
 from config import setup_logging
 
 app = Quart(__name__)
