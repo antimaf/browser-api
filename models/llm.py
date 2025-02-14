@@ -30,8 +30,10 @@ class GeminiConfig(LLMConfig):
         )
 
 class OpenAIConfig(LLMConfig):
-    """Configuration for OpenAI models"""
-    base_url: Optional[str] = Field(None, description="Optional base URL for API endpoint")
+    """Configuration for OpenAI models
+        Note: DeepSeek also uses the OpenAIConfig with base_url set to api.deepseek.com/v1
+    """
+    base_url: Optional[str] = Field(None, description="Optional base URL for API endpoint.")
 
     def create_llm(self) -> BaseLanguageModel:
         kwargs = {

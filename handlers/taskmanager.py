@@ -2,7 +2,6 @@ from typing import Dict, List, Optional
 import time
 from dataclasses import dataclass
 from datetime import datetime
-import asyncio
 from browser_use  import Controller
 
 @dataclass

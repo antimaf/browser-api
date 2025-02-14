@@ -1,27 +1,31 @@
 # Browser API
 
-A powerful API that provides browser automation capabilities using various LLM models. This API allows you to create autonomous agents that can perform web-based tasks using natural language instructions.
+An API that provides browser automation capabilities using various LLM models. This API allows you to create autonomous agents that can perform web-based tasks using natural language instructions.
 
 ## Features
 - 🤖 Multiple LLM Support: Compatible with OpenAI, Anthropic, Google, and DeepSeek models
 - 🌐 Browser Automation: Headless and visible browser modes
-- 📸 Screenshot Capture: Automatically capture screenshots during task execution
-- 🎥 Video Recording: Record browser sessions for task analysis
 - 🔄 Async Support: Built with Quart for async operations
 - 🛡️ CORS Support: Built-in CORS handling for web applications
 - 📝 Logging: Comprehensive logging system for debugging
 
 ## Supported Models
 - OpenAI
-  - GPT-4
-  - GPT-3.5 Turbo
+  - GPT-4o
 - Anthropic
-  - Claude 2
+  - Claude 3.0 Haiku
   - Claude 3.5 Sonnet
 - Google
-  - Gemini Pro
+  - Gemini Pro (2.0 Flash)
 - DeepSeek
-  - DeepSeek Reasoner
+  - DeepSeek Reasoner (R1)
+  - DeepSeek Chat (V3)
+
+## To Come
+- 📸 Screenshot Capture: Automatically capture screenshots during task execution
+- 🎥 Video Recording: Record browser sessions for task analysis
+- OpenAI reasoning models
+  - o1-preview, o3-mini, o3-mini-high
 
 ## Prerequisites
 - Python 3.11+
@@ -32,7 +36,7 @@ A powerful API that provides browser automation capabilities using various LLM m
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/browser-api.git
+git clone https://github.com/antimaf/browser-api.git
 cd browser-api
 ```
 
@@ -81,7 +85,7 @@ Request body:
 ```json
 {
     "task": "Search for information about AI on Google",
-    "model": "gemini-pro",  // or "gpt-4", "claude-2", "deepseek-reasoner"
+    "model": "gemini-pro",  // or "gpt-4", "claude-3.5-sonnet", "deepseek-reasoner"
     "api_key": "your_api_key",  // Optional: if not provided, will use server-side keys
     "headless": true,  // Whether to run browser in headless mode
     "max_steps": 10,   // Maximum number of steps for the agent to take
@@ -193,3 +197,7 @@ browser-api/
 └── README.md
 
 ```
+
+## Authors
+
+- [Anthony Imafidon](https://github.com/antimaf)
