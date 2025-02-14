@@ -86,7 +86,8 @@ async def run_search_example(
     # Create the task
     task = TaskCreate(
         task=f"Search Google for: {query}",
-        config=config
+        config=config,
+        script=script.dict()  # Convert to dictionary for JSON serialization
     )
     
     # Set up headers
@@ -99,7 +100,7 @@ async def run_search_example(
     # Submit task to API
     response = requests.post(
         f"{api_url}/api/tasks",
-        json=task.model_dump(),
+        json=task.dict(),  # Use dict() here as well
         headers=headers
     )
     response.raise_for_status()

@@ -86,7 +86,7 @@ async def run_login_example(
     
     # Create task configuration
     config = TaskConfig(
-        model="gpt-4",  # or any other supported model
+        model="gpt-4o",  # or any other supported model
         headless=True,
         max_steps=5,
         debug_mode=True
@@ -95,7 +95,8 @@ async def run_login_example(
     # Create the task
     task = TaskCreate(
         task=f"Login to {url} using provided credentials",
-        config=config
+        config=config,
+        script=script.dict()  # Convert to dictionary for JSON serialization
     )
     
     # Set up headers
@@ -108,7 +109,7 @@ async def run_login_example(
     # Submit task to API
     response = requests.post(
         f"{api_url}/api/tasks",
-        json=task.model_dump(),
+        json=task.dict(),  # Use dict() here as well
         headers=headers
     )
     response.raise_for_status()
