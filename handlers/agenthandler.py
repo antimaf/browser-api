@@ -1,11 +1,10 @@
 #imports
 import os
 from typing import Optional, List, Dict, Any
-from dataclasses import dataclass
+from pydantic import SecretStr, BaseModel
 import time
 import asyncio
 from flask import jsonify
-from pydantic import SecretStr, BaseModel
 import json
 from datetime import datetime
 
@@ -13,33 +12,11 @@ from datetime import datetime
 from browser_use import Agent, Browser, BrowserConfig
 
 from models.llm import create_llm_config
-from models.browser import AutomationScript, BrowserAction
+from models.browser import AutomationScript, BrowserAction, ScriptStep
 
 import logging
 logger = logging.getLogger(__name__)
 
-class BrowserAction(BaseModel):
-    """Model for browser actions that can be executed"""
-    action_type: str  # click, type, scroll, navigate, etc.
-    selector: Optional[str] = None
-    value: Optional[str] = None
-    url: Optional[str] = None
-    coordinates: Optional[Dict[str, int]] = None
-    wait_time: Optional[int] = None
-
-class ScriptStep(BaseModel):
-    """Model for a step in an automation script"""
-    step_id: str
-    description: str
-    actions: List[BrowserAction]
-    validation: Optional[Dict[str, Any]] = None
-
-class AutomationScript(BaseModel):
-    """Model for a complete automation script"""
-    name: str
-    description: str
-    steps: List[ScriptStep]
-    variables: Optional[Dict[str, str]] = None
 
 class AgentHandler:
     '''
