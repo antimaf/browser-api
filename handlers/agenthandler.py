@@ -1,4 +1,6 @@
-#imports
+''' This module contains the AgentHandler class, which is responsible for handling the agent logic for the API. '''
+
+#External dependencies
 import os
 from typing import Optional, List, Dict, Any
 from pydantic import SecretStr, BaseModel
@@ -10,7 +12,6 @@ from datetime import datetime
 
 #browser_use imports
 from browser_use import Agent, Browser, BrowserConfig
-
 from models.llm import create_llm_config
 from models.browser import AutomationScript, BrowserAction, ScriptStep
 

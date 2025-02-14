@@ -1,7 +1,10 @@
+#External dependencies
 import os
 import asyncio
 import requests
 from typing import Optional
+
+# Local imports
 from models.browser import AutomationScript, ScriptStep, BrowserAction, ActionType
 from models.task import TaskConfig, TaskCreate
 

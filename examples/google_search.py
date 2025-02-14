@@ -1,9 +1,13 @@
+#External dependencies
 import os
 import asyncio
 import requests
 from typing import Optional
-from models.browser import AutomationScript, ScriptStep, BrowserAction, ActionType
 import logging
+
+# Local imports
+from models.browser import AutomationScript, ScriptStep, BrowserAction, ActionType
+
 
 logger = logging.getLogger(__name__)
 

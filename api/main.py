@@ -1,4 +1,6 @@
-#Server dependencies
+''' Main API entry point for the browser automation service '''
+
+#External dependencies
 from quart import Quart, jsonify, request
 from quart_cors import cors
 import os

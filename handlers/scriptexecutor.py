@@ -1,9 +1,15 @@
+''' This module contains the ScriptExecutor class, which is responsible for converting AutomationScript objects to browser_use tasks and executing them using a browser_use Agent. '''
+
+#External dependencies
 from typing import Dict, Any, Optional
-from models.browser import AutomationScript, BrowserAction, ActionType
-from browser_use import Agent, Browser, BrowserConfig
 import asyncio
 import logging
 from datetime import datetime
+
+# Local imports
+from models.browser import AutomationScript, BrowserAction, ActionType
+from browser_use import Agent, Browser, BrowserConfig
+
 
 logger = logging.getLogger(__name__)
 

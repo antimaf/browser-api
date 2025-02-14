@@ -1,12 +1,18 @@
+'''Task manager module to manage task execution and status tracking'''
+
+#External dependencies
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
+import time
 import asyncio
+
+# Local imports
 from browser_use import Controller
 from .scriptexecutor import ScriptExecutor
 from models.browser import AutomationScript
 from models.task import TaskStatus
-import time
+
 
 @dataclass
 class TaskStatus:
