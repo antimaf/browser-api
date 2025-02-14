@@ -1,180 +1,123 @@
 # Browser API
 
-An API that provides browser automation capabilities using various LLM models. This API allows you to create autonomous agents that can perform web-based tasks using natural language instructions.
+A browser automation API that enables autonomous web agents using state-of-the-art language models. Create, execute, and monitor web automation tasks using natural language instructions.
 
-## Features
-- 🤖 Multiple LLM Support: Compatible with OpenAI, Anthropic, Google, and DeepSeek models
-- 🌐 Browser Automation: Headless and visible browser modes
-- 🔄 Async Support: Built with Quart for async operations
-- 🛡️ CORS Support: Built-in CORS handling for web applications
-- 📝 Logging: Comprehensive logging system for debugging
-
-## Supported Models
-- OpenAI
-  - GPT-4o
-- Anthropic
-  - Claude 3.0 Haiku
-  - Claude 3.5 Sonnet
-- Google
-  - Gemini Pro (2.0 Flash)
-- DeepSeek
-  - DeepSeek Reasoner (R1)
-  - DeepSeek Chat (V3)
-
-## To Come
-- 📸 Screenshot Capture: Automatically capture screenshots during task execution
-- 🎥 Video Recording: Record browser sessions for task analysis
-- OpenAI reasoning models
-  - o1-preview, o3-mini, o3-mini-high
-
-## Prerequisites
-- Python 3.11+
-- Playwright
-- Virtual Environment (recommended)
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/antimaf/browser-api.git
-cd browser-api
+```python
+# Example: Automated Google Search
+await run_search_example(
+    query="Latest AI developments",
+    periodic=True,     # Run periodically
+    period=300.0      # Every 5 minutes
+)
 ```
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
+## Key Features
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+🤖 **Multi-Model Support**
+- OpenAI GPT-4o, Claude 3.5, Gemini Pro, DeepSeek
+- Choose the best model for your use case
+- [See all supported models →](docs/models.md)
 
-4. Install Playwright browsers:
-```bash
-playwright install
-```
+🌐 **Browser Automation**
+- Natural language task descriptions
+- Headless or visible browser modes
+- Screenshot and text extraction
+- [Learn about script execution →](docs/script-execution.md)
 
-5. Set up environment variables:
-Create a `.env` file with your API keys:
-```env
-OPENAI_API_KEY=your_openai_key
-ANTHROPIC_API_KEY=your_anthropic_key
-DEEPSEEK_API_KEY=your_deepseek_key
-GEMINI_API_KEY=your_gemini_key
-```
+⚡ **Robust Execution**
+- Automatic retries for failed actions
+- Periodic task execution
+- Real-time status monitoring
+- Comprehensive validation
+- [API documentation →](docs/api-reference.md)
 
-## Running the Server
+🔒 **Enterprise Ready**
+- Secure API key management
+- Async support with Quart
+- Detailed logging system
+- [Installation guide →](docs/installation.md)
 
-Start the API server:
-```bash
-python -m api.main
-```
+## Quick Start
 
-The server will start on `http://localhost:5001` by default.
+1. **Install**
+   ```bash
+   git clone https://github.com/antimaf/browser-api.git
+   cd browser-api
+   python -m venv .venv && source .venv/bin/activate
+   pip install -r requirements.txt
+   ```
 
-## API Endpoints
+2. **Configure**
+   Create `.env` file:
+   ```env
+   API_KEY=your_api_key
+   OPENAI_API_KEY=your_openai_key  # Or other model keys
+   ```
 
-### Create Task
-`POST /api/tasks`
+3. **Run**
+   ```bash
+   # Start the server
+   python -m api.main
+   
+   # Try an example
+   python -m examples.google_search
+   ```
 
-Create a new browser automation task.
+## Use Cases
 
-Request body:
-```json
-{
-    "task": "Search for information about AI on Google",
-    "model": "gemini-pro",  // or "gpt-4", "claude-3.5-sonnet", "deepseek-reasoner"
-    "api_key": "your_api_key",  // Optional: if not provided, will use server-side keys
-    "headless": true,  // Whether to run browser in headless mode
-    "max_steps": 10,   // Maximum number of steps for the agent to take
-    "record_video": false,  // Whether to record the browser session
-    "debug_mode": false     // Enable debug logging
-}
-```
+- **Web Monitoring**: Periodic checks of web content changes
+- **Data Collection**: Automated extraction of web data
+- **Form Automation**: Streamlined form filling and submission
+- **Testing**: Automated web application testing
+- **Custom Workflows**: Chain multiple web interactions
 
-Response:
-```json
-{
-    "task_id": "task_1234567890",
-    "status": "completed",
-    "result": {
-        "success": true,
-        "output": "Task execution result",
-        "execution_log": [],
-        "screenshots": [],
-        "video": null
-    }
-}
-```
+## Documentation
 
-### Get Task Status
-`GET /api/tasks/{task_id}`
+📚 [Installation Guide](docs/installation.md)
+- Complete setup instructions
+- Configuration options
+- Environment setup
 
-Get the status and result of a task.
+🔧 [Script Execution Guide](docs/script-execution.md)
+- Creating automation scripts
+- Task configuration
+- Best practices
 
-Response:
-```json
-{
-    "task_id": "task_1234567890",
-    "status": "completed",
-    "result": {
-        "success": true,
-        "output": "Task execution result",
-        "execution_log": [],
-        "screenshots": [],
-        "video": null
-    }
-}
-```
+📡 [API Reference](docs/api-reference.md)
+- Endpoint documentation
+- Request/response formats
+- Example usage
 
-### Cancel Task
-`POST /api/tasks/{task_id}/cancel`
+🤖 [Supported Models](docs/models.md)
+- Available LLM models
+- Model capabilities
+- Upcoming features
 
-Cancel a running task.
 
-Response:
-```json
-{
-    "task_id": "task_1234567890",
-    "status": "cancelled"
-}
-```
+## Example: Create a Task
 
-## Example Usage
-
-Using curl:
-```bash
-curl -X POST http://localhost:5001/api/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "task": "Search for information about AI on Google",
-    "model": "gemini-pro",
-    "api_key": "your_api_key",
-    "headless": true,
-    "max_steps": 10
-  }'
-```
-
-Using Python:
 ```python
 import requests
 
+# Create a browser automation task
 response = requests.post(
     "http://localhost:5001/api/tasks",
     json={
-        "task": "Search for information about AI on Google",
-        "model": "gemini-pro",
-        "api_key": "your_api_key",
-        "headless": True,
-        "max_steps": 10
+        "task": "Search for Python tutorials",
+        "config": {
+            "model": "gpt-4o",
+            "headless": True,
+            "periodic": True,
+            "period": 3600  # Hourly
+        }
     }
 )
-print(response.json())
+
+task_id = response.json()["task_id"]
+print(f"Task created: {task_id}")
 ```
 
-## Development
+## Project Structure
 
 The project structure is organised as follows:
 
@@ -184,7 +127,8 @@ browser-api/
 │   └── main.py           # API server implementation
 ├── handlers/
 │   ├── agenthandler.py   # Main agent logic
-│   └── taskmanager.py    # Task management
+│   ├── taskmanager.py    # Task management
+│   └── scriptexecutor.py # Script executor
 ├── models/
 │   ├── browser.py        # Browser-related models
 │   ├── llm.py           # LLM configurations
@@ -195,7 +139,6 @@ browser-api/
 ├── examples/            # Example scripts
 ├── requirements.txt
 └── README.md
-
 ```
 
 ## Authors

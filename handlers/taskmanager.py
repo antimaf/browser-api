@@ -1,8 +1,12 @@
 from typing import Dict, List, Optional
-import time
 from dataclasses import dataclass
 from datetime import datetime
-from browser_use  import Controller
+import asyncio
+from browser_use import Controller
+from .scriptexecutor import ScriptExecutor
+from models.browser import AutomationScript
+from models.task import TaskStatus
+import time
 
 @dataclass
 class TaskStatus:
@@ -10,7 +14,7 @@ class TaskStatus:
     status: str  # running, completed, failed, cancelled
     start_time: float
     end_time: Optional[float] = None
-    result: Optional[str] = None
+    result: Optional[dict] = None
     error: Optional[str] = None
     logs: List[str] = None
 
@@ -19,6 +23,7 @@ class TaskManager:
         self.tasks: Dict[str, TaskStatus] = {}
         self.active_browsers: Dict[str, Controller] = {}
         self.task_counter = 0
+        self.script_executor = ScriptExecutor()
 
     def generate_task_id(self) -> str:
         self.task_counter += 1
@@ -32,7 +37,45 @@ class TaskManager:
             logs=[]
         )
 
-    def complete_task(self, task_id: str, result: str) -> None:
+    async def execute_task(self, task_id: str, script: AutomationScript, config: dict) -> None:
+        """Execute a task with the given script and configuration"""
+        try:
+            # Create or get browser controller
+            if task_id not in self.active_browsers:
+                self.active_browsers[task_id] = Controller(
+                    headless=config.get("headless", True),
+                    debug_mode=config.get("debug_mode", False)
+                )
+            
+            controller = self.active_browsers[task_id]
+            agent = await controller.get_agent()
+            
+            # Execute the script
+            result = await self.script_executor.execute_script(
+                script=script,
+                agent=agent,
+                task_interval=0.5,
+                periodic=config.get("periodic", False),
+                period=config.get("period", 60.0),
+                max_retries=config.get("max_retries", 3),
+                stop_on_error=config.get("stop_on_error", True)
+            )
+            
+            # Update task status
+            if result["status"] == "completed":
+                self.complete_task(task_id, result)
+            else:
+                self.fail_task(task_id, result.get("error", "Unknown error"))
+            
+        except Exception as e:
+            self.fail_task(task_id, str(e))
+        finally:
+            # Cleanup browser if needed
+            if task_id in self.active_browsers:
+                await self.active_browsers[task_id].cleanup()
+                del self.active_browsers[task_id]
+
+    def complete_task(self, task_id: str, result: dict) -> None:
         if task_id in self.tasks:
             self.tasks[task_id].status = "completed"
             self.tasks[task_id].end_time = time.time()
