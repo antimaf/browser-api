@@ -90,5 +90,49 @@ async def cancel_task(task_id):
         return jsonify({"status": "cancelled"})
     return jsonify({"error": "Task not found or already completed"}), 404
 
+@app.route('/api/tasks/script', methods=['POST'])
+@require_api_key
+async def create_script_task():
+    """Create and execute a task using a predefined automation script"""
+    try:
+        data = await request.get_json()
+        task_id = task_manager.generate_task_id()
+        task_manager.register_task(task_id)
+        
+        # Create agent handler with script
+        agent_handler = AgentHandler(
+            task=data['task'],
+            api_key=data.get('api_key'),
+            model=data.get('model', 'gpt-4'),
+            headless=data.get('headless', True),
+            max_steps=data.get('max_steps', 10),
+            script=AutomationScript(**data['script']),  # Convert dict to AutomationScript
+            variables=data.get('variables'),
+            screenshot_dir=data.get('screenshot_dir'),
+            record_video=data.get('record_video', False),
+            debug_mode=data.get('debug_mode', False)
+        )
+        
+        # Execute the script
+        result = await agent_handler.execute_script()
+        task_manager.complete_task(task_id, result)
+        
+        return jsonify({
+            "task_id": task_id,
+            "status": "completed",
+            "result": result,
+            "screenshots": agent_handler.screenshots,
+            "video_path": agent_handler.video_path,
+            "execution_log": agent_handler.execution_log
+        })
+        
+    except Exception as e:
+        import traceback
+        print(f"Error executing script task: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
+        if 'task_id' in locals():
+            task_manager.fail_task(task_id, str(e))
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

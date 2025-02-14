@@ -3,7 +3,9 @@ import asyncio
 import requests
 from typing import Optional
 from models.browser import AutomationScript, ScriptStep, BrowserAction, ActionType
-from models.task import TaskConfig, TaskCreate
+import logging
+
+logger = logging.getLogger(__name__)
 
 def create_google_search_script(search_query: str) -> AutomationScript:
     """
@@ -65,10 +67,16 @@ async def run_search_example(
     api_url: str = "http://localhost:5001",
     periodic: bool = False,
     period: float = 60.0,
-    max_retries: int = 3
+    max_retries: int = 3,
+    headless: bool = True,
+    screenshot_dir: Optional[str] = None
 ):
     """
     Example of using the API to perform a Google search
+    
+    Two methods are demonstrated:
+    1. Script-based execution (recommended): Uses a predefined automation script
+    2. Direct task execution: Uses natural language task description
     
     Args:
         query: Search query to execute
@@ -77,92 +85,86 @@ async def run_search_example(
         periodic: Whether to run the search periodically
         period: Time between runs if periodic (in seconds)
         max_retries: Maximum number of retries per action
+        headless: Whether to run in headless mode
+        screenshot_dir: Directory to save screenshots
     """
-    # Create the automation script
-    script = create_google_search_script(query)
+    headers = {"X-API-Key": api_key} if api_key else {}
     
-    # Create task configuration
-    config = TaskConfig(
-        model="gpt-4o",  # or any other supported model
-        headless=True,
-        max_steps=5,
-        debug_mode=True,
-        periodic=periodic,
-        period=period,
-        max_retries=max_retries
-    )
-    
-    # Create the task
-    task = TaskCreate(
-        task=f"Search Google for: {query}",
-        config=config,
-        script=script.dict()
-    )
-    
-    # Set up headers
-    headers = {
-        "Content-Type": "application/json"
-    }
-    if api_key:
-        headers["X-API-Key"] = api_key
-    
-    # Submit task to API
-    response = requests.post(
-        f"{api_url}/api/tasks",
-        json=task.dict(),
-        headers=headers
-    )
-    response.raise_for_status()
-    task_id = response.json()["task_id"]
-    
-    print(f"Task created with ID: {task_id}")
-    print("Monitoring task execution...")
-    
-    # Poll for task completion or until interrupted
-    try:
-        while True:
-            status_response = requests.get(
-                f"{api_url}/api/tasks/{task_id}",
-                headers=headers
+    while True:  # Main loop for periodic execution
+        try:
+            # Method 1: Script-based execution (recommended)
+            print("\nMethod 1: Script-based execution")
+            script = create_google_search_script(query)
+            
+            script_response = requests.post(
+                f"{api_url}/api/tasks/script",
+                headers=headers,
+                json={
+                    "task": f"Search Google for: {query}",
+                    "script": script.dict(),
+                    "model": "gpt-4",  # or any other supported model
+                    "headless": headless,
+                    "max_retries": max_retries,
+                    "screenshot_dir": screenshot_dir,
+                    "debug_mode": True,
+                    "periodic": periodic,
+                    "period": period
+                }
             )
-            status_response.raise_for_status()
-            status = status_response.json()
             
-            print(f"\rTask status: {status['status']}", end="")
+            script_result = script_response.json()
+            print(f"Task ID: {script_result['task_id']}")
+            print(f"Status: {script_result['status']}")
+            if script_result.get('screenshots'):
+                print(f"Screenshots saved to: {script_result['screenshots']}")
             
-            if status["status"] in ["completed", "failed", "cancelled"]:
-                print(f"\nTask {status['status']}")
-                if status.get("error"):
-                    print(f"Error: {status['error']}")
-                if status.get("result"):
-                    print("\nResults:")
-                    for run in status["result"]["runs"]:
-                        print(f"\nRun at {run['start_time']}:")
-                        for task_result in run["results"]:
-                            if task_result["success"]:
-                                print(f"✓ {task_result['task']}")
-                                if "result" in task_result and task_result["result"]:
-                                    print(f"  Result: {task_result['result']}")
-                            else:
-                                print(f"✗ {task_result['task']}")
-                                print(f"  Error: {task_result['error']}")
+            # Method 2: Direct task execution
+            print("\nMethod 2: Direct task execution")
+            task_response = requests.post(
+                f"{api_url}/api/tasks",
+                headers=headers,
+                json={
+                    "task": f"Go to Google and search for '{query}'. Extract the search results.",
+                    "model": "gpt-4",
+                    "headless": headless,
+                    "max_steps": 5,
+                    "periodic": periodic,
+                    "period": period
+                }
+            )
+            
+            task_result = task_response.json()
+            print(f"Task ID: {task_result['task_id']}")
+            print(f"Status: {task_result['status']}")
+            
+            # If not periodic, break after one execution
+            if not periodic:
                 break
+                
+            # Wait for the specified period before next execution
+            print(f"\nWaiting {period} seconds before next execution...")
+            await asyncio.sleep(period)
             
-            await asyncio.sleep(1)
-            
-    except KeyboardInterrupt:
-        print("\nCancelling task...")
-        requests.post(f"{api_url}/api/tasks/{task_id}/cancel", headers=headers)
-        print("Task cancelled")
+        except KeyboardInterrupt:
+            print("\nExecution interrupted by user")
+            break
+        except Exception as e:
+            print(f"\nError during execution: {e}")
+            if not periodic:
+                break
+            print(f"Waiting {period} seconds before retry...")
+            await asyncio.sleep(period)
 
 if __name__ == "__main__":
-    # Example usage
     import dotenv
     dotenv.load_dotenv()
     
+    # Example usage
     asyncio.run(run_search_example(
-        query="Python browser automation",
+        query="Latest AI developments",
         api_key=os.getenv("API_KEY"),
-        periodic=True,  # Run the search periodically
-        period=300.0   # Every 5 minutes
+        screenshot_dir="screenshots",
+        headless=True,
+        periodic=True,     # Run periodically
+        period=300.0      # Every 5 minutes
     ))

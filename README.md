@@ -1,38 +1,37 @@
 # Browser API
 
-A browser automation API that enables autonomous web agents using state-of-the-art language models. Create, execute, and monitor web automation tasks using natural language instructions.
+A browser automation API that enables autonomous web agents using state-of-the-art language models. Create, execute, and monitor web automation tasks using either predefined scripts or natural language instructions.
 
 ```python
 # Example: Automated Google Search
 await run_search_example(
     query="Latest AI developments",
     periodic=True,     # Run periodically
-    period=300.0      # Every 5 minutes
+    period=300.0,     # Every 5 minutes
+    screenshot_dir="screenshots"
 )
 ```
 
 ## Key Features
 
-🤖 **Multi-Model Support**
-- OpenAI GPT-4o, Claude 3.5, Gemini Pro, DeepSeek
-- Choose the best model for your use case
-- [See all supported models →](docs/models.md)
-
-🌐 **Browser Automation**
+🤖 **Dual Execution Modes**
+- Script-based execution with predefined steps
 - Natural language task descriptions
-- Headless or visible browser modes
-- Screenshot and text extraction
-- [Learn about script execution →](docs/script-execution.md)
+- [See execution modes →](docs/script-execution.md)
 
-⚡ **Robust Execution**
-- Automatic retries for failed actions
-- Periodic task execution
-- Real-time status monitoring
-- Comprehensive validation
-- [API documentation →](docs/api-reference.md)
+🎯 **Precise Control**
+- Define exact browser actions
+- Validation rules for each step
+- Screenshot and content extraction
+- Video recording support
 
-🔒 **Enterprise Ready**
-- Secure API key management
+🔄 **Task Management**
+- Create and monitor tasks
+- Periodic execution
+- Real-time status updates
+- Comprehensive logging
+
+🛠️ **Extras**
 - Async support with Quart
 - Detailed logging system
 - [Installation guide →](docs/installation.md)
@@ -63,6 +62,70 @@ await run_search_example(
    python -m examples.google_search
    ```
 
+## Usage Examples
+
+### 1. Quick Start Example
+```python
+# Example: Automated Google Search
+await run_search_example(
+    query="Latest AI developments",
+    periodic=True,     # Run periodically
+    period=300.0,     # Every 5 minutes
+    screenshot_dir="screenshots"
+)
+```
+
+### 2. Script-Based Execution (Recommended)
+```python
+from browser_api import AutomationScript, ScriptStep, BrowserAction
+
+# Create a script
+script = AutomationScript(
+    name="Google Search",
+    steps=[
+        ScriptStep(
+            step_id="navigate",
+            description="Navigate to Google",
+            actions=[
+                BrowserAction(
+                    action_type="navigate",
+                    url="https://www.google.com"
+                )
+            ]
+        )
+    ]
+)
+
+# Execute via API with periodic scheduling
+response = requests.post(
+    "http://localhost:5001/api/tasks/script",
+    headers={"X-API-Key": "your_api_key"},
+    json={
+        "task": "Execute search script",
+        "script": script.dict(),
+        "screenshot_dir": "screenshots",
+        "periodic": True,
+        "period": 300.0  # Every 5 minutes
+    }
+)
+```
+
+### 3. Direct Task Execution
+```python
+# Execute using natural language with periodic scheduling
+response = requests.post(
+    "http://localhost:5001/api/tasks",
+    headers={"X-API-Key": "your_api_key"},
+    json={
+        "task": "Go to Google and search for 'Browser automation'",
+        "model": "gpt-4",
+        "headless": True,
+        "periodic": True,
+        "period": 300.0  # Every 5 minutes
+    }
+)
+```
+
 ## Use Cases
 
 - **Web Monitoring**: Periodic checks of web content changes
@@ -81,6 +144,7 @@ await run_search_example(
 🔧 [Script Execution Guide](docs/script-execution.md)
 - Creating automation scripts
 - Task configuration
+- Validation rules
 - Best practices
 
 📡 [API Reference](docs/api-reference.md)
