@@ -10,6 +10,7 @@ import time
 
 @dataclass
 class TaskStatus:
+    """Data class to store task status"""
     task_id: str
     status: str  # running, completed, failed, cancelled
     start_time: float
@@ -19,6 +20,7 @@ class TaskStatus:
     logs: List[str] = None
 
 class TaskManager:
+    """Task manager class to manage task execution"""
     def __init__(self):
         self.tasks: Dict[str, TaskStatus] = {}
         self.active_browsers: Dict[str, Controller] = {}

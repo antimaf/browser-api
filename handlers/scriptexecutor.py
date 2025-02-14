@@ -15,24 +15,25 @@ class ScriptExecutor:
     
     def _action_to_task(self, action: BrowserAction) -> str:
         """Convert a BrowserAction to a browser_use task string"""
-        if action.action_type == ActionType.NAVIGATE:
-            return f"Navigate to {action.url}"
-        elif action.action_type == ActionType.CLICK:
-            return f"Click on element matching selector: {action.selector}"
-        elif action.action_type == ActionType.TYPE:
-            return f"Type '{action.value}' into element matching selector: {action.selector}"
-        elif action.action_type == ActionType.WAIT:
-            return f"Wait for {action.wait_time} milliseconds"
-        elif action.action_type == ActionType.SCROLL:
-            if action.coordinates:
-                return f"Scroll to coordinates x:{action.coordinates.get('x')}, y:{action.coordinates.get('y')}"
-            return "Scroll to bottom of page"
-        elif action.action_type == ActionType.SCREENSHOT:
-            return f"Take screenshot of element matching selector: {action.selector}"
-        elif action.action_type == ActionType.EXTRACT:
-            return f"Extract text from element matching selector: {action.selector}"
-        else:
-            raise ValueError(f"Unsupported action type: {action.action_type}")
+        match action.action_type:
+            case ActionType.NAVIGATE:
+                return f"Navigate to {action.url}"
+            case ActionType.CLICK:
+                return f"Click on element matching selector: {action.selector}"
+            case ActionType.TYPE:
+                return f"Type '{action.value}' into element matching selector: {action.selector}"
+            case ActionType.WAIT:
+                return f"Wait for {action.wait_time} milliseconds"
+            case ActionType.SCROLL:
+                if action.coordinates:
+                    return f"Scroll to coordinates x:{action.coordinates.get('x')}, y:{action.coordinates.get('y')}"
+                return "Scroll to bottom of page"
+            case ActionType.SCREENSHOT:
+                return f"Take screenshot of element matching selector: {action.selector}"
+            case ActionType.EXTRACT:
+                return f"Extract text from element matching selector: {action.selector}"
+            case _:
+                raise ValueError(f"Unsupported action type: {action.action_type}")
     
     def script_to_tasks(self, script: AutomationScript) -> list[str]:
         """Convert an AutomationScript to a list of browser_use tasks"""
@@ -105,6 +106,7 @@ class ScriptExecutor:
         }
         
         async def run_once() -> Dict[str, Any]:
+            """Run the script once and return the results"""
             run_results = []
             run_success = True
             run_start_time = datetime.now().isoformat()
