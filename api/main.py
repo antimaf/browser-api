@@ -1,5 +1,12 @@
 ''' Main API entry point for the browser automation service '''
 
+import sys
+import os
+
+# Add project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
+
 #External dependencies
 from quart import Quart, jsonify, request
 from quart_cors import cors
@@ -12,7 +19,7 @@ from typing import Dict, Optional
 from handlers.agenthandler import AgentHandler
 from handlers.taskmanager import task_manager
 from models.browser import AutomationScript
-from config import setup_logging
+from config.logging import setup_logging
 
 app = Quart(__name__)
 app = cors(app)

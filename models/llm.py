@@ -22,11 +22,6 @@ class GeminiConfig(LLMConfig):
         return ChatGoogleGenerativeAI(
             model=self.model,
             api_key=self.api_key,
-            temperature=self.temperature,
-            convert_system_message_to_human=self.convert_system_message_to_human,
-            top_p=self.top_p,
-            top_k=self.top_k,
-            max_output_tokens=self.max_output_tokens
         )
 
 class OpenAIConfig(LLMConfig):
@@ -39,7 +34,6 @@ class OpenAIConfig(LLMConfig):
         kwargs = {
             "model": self.model,
             "api_key": self.api_key,
-            "temperature": self.temperature
         }
         if self.base_url:
             kwargs["base_url"] = self.base_url
@@ -52,9 +46,7 @@ class AnthropicConfig(LLMConfig):
     def create_llm(self) -> BaseLanguageModel:
         return ChatAnthropic(
             model=self.model,
-            api_key=self.api_key,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens
+            api_key=self.api_key
         )
 
 def create_llm_config(model: str, api_key: str, **kwargs) -> LLMConfig:

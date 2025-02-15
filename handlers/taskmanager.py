@@ -11,7 +11,7 @@ import asyncio
 from browser_use import Controller
 from .scriptexecutor import ScriptExecutor
 from models.browser import AutomationScript
-from models.task import TaskStatus
+
 
 
 @dataclass
