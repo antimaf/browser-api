@@ -195,7 +195,7 @@ class AgentHandler:
         Execute the agent task or script.
         Returns a dictionary containing execution results, screenshots, and logs.
         """
-        logger.info(f"Executing task: {self.task}, model: {self.model}, headless: {self.headless}, max_steps: {self.max_steps}")
+        logger.info(f"Executing task: {self.task}, model: {self.model}, headless: {'Yes' if self.headless else 'No'}, max_steps: {self.max_steps}")
         
         try:
             # Initialize the browser with proper configuration
