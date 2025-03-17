@@ -22,8 +22,7 @@ await run_search_example(
 🎯 **Precise Control**
 - Define exact browser actions
 - Validation rules for each step
-- Screenshot and content extraction
-- Video recording support
+- Content extraction
 
 🔄 **Task Management**
 - Create and monitor tasks
@@ -33,7 +32,6 @@ await run_search_example(
 
 🛠️ **Extras**
 - Async support with Quart
-- Detailed logging system
 - [Installation guide →](docs/installation.md)
 
 ## Quick Start
